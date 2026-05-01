@@ -1,122 +1,103 @@
-# Steam Reviews Big Data Pipeline
+# 🎮 Steam Big Data Pipeline: 100M+ Reviews Analytics
 
-## Project Overview
-วิเคราะห์ข้อมูล Steam Reviews กว่า 88 ล้าน reviews โดยใช้ Big Data pipeline
-ตั้งแต่การ ingest ข้อมูล → clean → แปลงเป็น Parquet → วิเคราะห์ → Dashboard
+โปรเจกต์นี้เป็นระบบ **Data Engineering Pipeline** ครบวงจรสำหรับจัดการชุดข้อมูลรีวิวจาก Steam ขนาดใหญ่ (Original CSV **~39.57 GB**) ออกแบบมาเพื่อแก้ปัญหาข้อจำกัดด้านทรัพยากรบนเครื่อง Local (Out of Memory) โดยใช้เทคนิค Chunking และกระบวนการจัดเก็บข้อมูลที่มีประสิทธิภาพ
+
+**จัดทำโดย:** ธนภัทร สมพงษ์ (Guide)
+**สถาบัน:** มหาวิทยาลัยสยาม (Siam University)
+
+---
+## 📂 Dataset Source
+*   **Dataset Name:** Steam Reviews Dataset
+*   **Source:** [Kaggle - 100M+ Steam Reviews](https://www.kaggle.com/datasets/kieranpoc/steam-reviews/data)
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| **Data Processing** | Python (Pandas & PyArrow) พร้อมเทคนิค **Chunk-based Loading** |
+| **Orchestration** | **Apache Airflow** (Docker Compose) |
+| **Storage Format** | **Parquet** (Snappy Compression) |
+| **Query Engine** | **DuckDB** (In-process OLAP) สำหรับการประมวลผลระดับวินาที |
+| **Dashboard** | **Streamlit** Interactive Web Application |
 
 ---
 
-## Dataset
-- **Source:** Kaggle — [100M+ Steam Reviews](https://www.kaggle.com/datasets/kieranpoc/steam-reviews)
-- **ไฟล์ดิบ:** `data/raw/all_reviews/all_reviews.csv` — 42 GB
-- **หลัง clean:** `data/cleaned/steam_reviews_cleaned.csv` — 88,051,726 rows
-- **Parquet:** `data/parquet/steam_reviews.parquet` — 115 MB
-
-## Columns สำคัญ
-| Column | ความหมาย |
-|---|---|
-| `recommendationid` | ID ของ review |
-| `appid` | ID ของเกม |
-| `game` | ชื่อเกม |
-| `author_steamid` | ID ของผู้รีวิว |
-| `language` | ภาษาของ review |
-| `review` | ข้อความ review |
-| `timestamp_created` | เวลาที่รีวิว (unix) |
-| `voted_up` | แนะนำหรือไม่ (1=แนะนำ, 0=ไม่แนะนำ) |
-| `votes_up` | จำนวนคนที่กด helpful |
-| `author_playtime_forever` | เวลาเล่นทั้งหมด (นาที) |
-| `weighted_vote_score` | คะแนน weighted |
-
----
-
-## โครงสร้างโปรเจกต์
+## 📁 โครงสร้างโปรเจกต์
+```text
 Steam_Reviews_Bigdata/
-├── data/
-│   ├── raw/all_reviews/all_reviews.csv      # ข้อมูลดิบ 42GB
-│   ├── cleaned/steam_reviews_cleaned.csv    # หลัง clean 88M rows
-│   └── parquet/steam_reviews.parquet        # Parquet 115MB
-├── src/
-│   ├── ingest.py       # ดาวน์โหลดข้อมูลจาก Kaggle
-│   ├── clean.py        # ทำความสะอาดข้อมูล
-│   ├── transform.py    # แปลง CSV → Parquet + benchmark
-│   └── analyze.py      # วิเคราะห์และสร้างกราฟ
-├── dags/
-│   └── steam_pipeline_dag.py    # Airflow DAG
-├── dashboard/
-│   └── app.py          # Streamlit Dashboard
-├── docs/
-│   └── charts/         # กราฟที่สร้างจาก analyze.py
-├── notebooks/
-├── tests/
-├── requirements.txt
-└── README.md
+├── docker-compose.yml      # ✅ ระบบ Airflow (Scheduler, Webserver, Postgres)
+├── requirements.txt        # ✅ Python dependencies สำหรับเครื่อง Local
+├── README.md               
+│
+├── dags/                   # Airflow DAGs (ควบคุม Pipeline)
+│   └── steam_dag.py        #   - ขั้นตอน Clean & Convert -> Analyze
+│
+├── src/                    # โค้ดหลักของระบบ (Source Code)
+│   ├── clean_and_convert.py #   - การประมวลผลแบบ Chunking (200k rows/chunk)
+│   ├── analyze.py          #   - Data Quality Check ด้วย PyArrow
+│   ├── benchmark.py        #   - สคริปต์เปรียบเทียบประสิทธิภาพ (CSV vs Parquet)
+│   └── dashboard.py        #   - Web Dashboard (Streamlit)
+│
+└── data/                   # การจัดเก็บข้อมูล
+    ├── raw/                #   - ข้อมูลดิบ (all_reviews.csv ~40GB)
+    └── parquet/            #   - ข้อมูลที่ประมวลผลแล้ว (Partitioned Parquet)
 
----
+    🚀 Pipeline Steps
+✅ 1. Ingest & Clean (src/clean_and_convert.py)
+อ่านไฟล์ CSV 39.57 GB แบบ Chunking (200,000 rows/chunk) เพื่อไม่ให้ RAM เต็ม
 
-## Pipeline Steps
+ทำความสะอาดข้อมูล: จัดการ Missing Values, ลบรีวิวที่สั้นเกินไป และแปลงประเภทข้อมูล (Data Type Casting)
 
-### ✅ 1. Ingest
-- ดาวน์โหลดผ่าน Kaggle API
-- คำสั่ง: `kaggle datasets download -d kieranpoc/steam-reviews -p data\raw`
+Checkpoint System: สามารถรันงานต่อจากจุดเดิมได้ทันทีหากระบบหยุดชะงัก
 
-### ✅ 2. Clean (`src/clean.py`)
-- อ่าน CSV แบบ chunk (500,000 rows/chunk) รวม 228 chunks
-- drop_duplicates, dropna (review, appid, voted_up)
-- แปลง timestamp unix → datetime
-- สร้าง column ใหม่: review_length, year, month
-- กรอง review สั้นกว่า 10 ตัวอักษร
-- ผลลัพธ์: 88,051,726 rows
+✅ 2. Transform & Storage
+แปลงข้อมูลเป็น Parquet Format พร้อมบีบอัดด้วย Snappy
 
-### ✅ 3. Transform (`src/transform.py`)
-- แปลง CSV → Parquet ด้วย PyArrow + Snappy compression
-- อ่านแบบ chunk เพื่อประหยัด RAM
-- ผลลัพธ์: 115 MB (ลดจาก CSV หลายเท่า)
+ผลลัพธ์: ลดขนาดข้อมูลจาก ~40GB เหลือเพียง ~19.67 GB (ประหยัดพื้นที่ 50.3%)
 
-### ✅ 4. Analyze (`src/analyze.py`)
-- โหลดจาก Parquet (เร็วกว่า CSV มาก)
-- สร้างกราฟ 5 อัน:
-  - `sentiment_pie.png` — สัดส่วน recommended vs not
-  - `top_games.png` — Top 10 เกมที่มี review เยอะสุด
-  - `reviews_over_time.png` — จำนวน review ต่อเดือน
-  - `languages.png` — Top 10 ภาษา
-  - `playtime_vs_sentiment.png` — เวลาเล่นกับความพึงพอใจ
+✅ 3. Orchestration (Airflow)
+ควบคุมลำดับการทำงานผ่าน Airflow DAG
 
-### ⬜ 5. Airflow (`dags/steam_pipeline_dag.py`)
-- Orchestrate pipeline ทั้งหมด ingest → clean → transform → analyze
-- ยังไม่ได้ทำ
+Task 1: clean_and_convert — ประมวลผลข้อมูลดิบ
 
-### ⬜ 6. Dashboard (`dashboard/app.py`)
-- Streamlit interactive dashboard
-- ยังไม่ได้ทำ
+Task 2: analyze_data — ตรวจสอบคุณภาพและความสมบูรณ์ของไฟล์ Parquet
 
----
+📊 Performance Benchmark (ผลการทดสอบ)
+จากการทดสอบดึงข้อมูลจำนวนรีวิวแยกตามปีจากข้อมูลทั้งหมด:
 
-## Key Insights จากข้อมูล
-- คนที่ **Recommended** เล่นนานกว่า (median ~750 นาที) vs **Not Recommended** (median ~200 นาที)
-- ข้อมูลมี 88 ล้าน reviews จาก games หลายพันเกม
+🦆 DuckDB (Parquet): ใช้เวลาเพียง 0.43 วินาที
 
----
+🐼 Pandas (Standard): FAILED (Out of Memory) เนื่องจากพยายามโหลดข้อมูลทั้งหมดลง RAM
 
-## Environment
-- **OS:** Windows 11
-- **Python:** 3.13.13
-- **Virtual Env:** venv
-- **Key Libraries:** pandas, pyarrow, matplotlib, seaborn, streamlit, plotly
+🖥️ วิธีการรันโปรเจกต์
+ขั้นตอนที่ 1: เตรียมสภาพแวดล้อม
 
-## How to Run
-```bash
-# 1. activate venv
+# 1. Activate Virtual Environment
 venv\Scripts\activate
 
-# 2. clean
-python src/clean.py
+# 2. ติดตั้ง Library ที่จำเป็น
+pip install -r requirements.txt
 
-# 3. transform
-python src/transform.py
+ขั้นตอนที่ 2: รัน Pipeline ผ่าน Airflow
+เปิด Docker Desktop และรันคำสั่ง docker-compose up -d
 
-# 4. analyze
-python src/analyze.py
+เข้าไปที่ http://localhost:8081 (admin/admin)
 
-# 5. dashboard
-streamlit run dashboard/app.py
-```
+เปิดใช้งาน DAG steam_pipeline_v1 เพื่อเริ่มประมวลผล
+
+ขั้นตอนที่ 3: เปิด Dashboard และ Benchmark
+Bash
+# รันการทดสอบประสิทธิภาพ
+python src/benchmark.py
+
+# เปิดหน้าจอวิเคราะห์ข้อมูล
+streamlit run src/dashboard.py
+
+📈 Dashboard Features
+Total Reviews: แสดงจำนวนรีวิวมหาศาลที่ผ่านการตรวจสอบแล้ว
+
+Sentiment Analysis: สัดส่วนรีวิวแง่บวกและแง่ลบของแต่ละเกม
+
+Top Games: 10 อันดับเกมที่ได้รับความนิยมสูงสุดในฐานข้อมูล
+
+Language Insights: การกระจายตัวของผู้เล่นในแต่ละภาษา
