@@ -1,0 +1,11 @@
+# Ignore everything in these folders
+data/
+logs/
+venv/
+**/__pycache__/
+
+# Ignore all large data formats anywhere
+*.csv
+*.parquet
+*.zip
+*.json

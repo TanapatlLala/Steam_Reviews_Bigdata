@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # --- ฐานข้อมูลสำหรับ Airflow ---
+  postgres:
+    image: postgres:13
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U airflow" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # --- 🌟 เพิ่มใหม่: ตัวช่วยสร้างตารางฐานข้อมูล (รันครั้งเดียวจบ) ---
+  airflow-init:
+    image: apache/airflow:2.7.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+    command: >
+      bash -c " airflow db init && airflow users create --role Admin --username admin --email admin@example.com --firstname admin --lastname admin --password admin "
+
+  # --- ตัวหน้าเว็บ (Webserver) ---
+  airflow-webserver:
+    image: apache/airflow:2.7.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - _PIP_ADDITIONAL_DEPENDENCIES=pandas pyarrow matplotlib seaborn
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./config:/opt/airflow/config
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
+    ports:
+      - "8081:8080" # 👈 ประตูบ้านเลขที่ 8081
+    command: webserver
+
+  # --- ตัวสั่งงาน (Scheduler) ---
+  airflow-scheduler:
+    image: apache/airflow:2.7.1
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - _PIP_ADDITIONAL_DEPENDENCIES=pandas pyarrow matplotlib seaborn
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./config:/opt/airflow/config
+      - ./src:/opt/airflow/src
+      - ./data:/opt/airflow/data
+    command: scheduler

@@ -1,0 +1,9 @@
+pandas
+pyarrow
+fastparquet
+kaggle
+streamlit
+plotly
+matplotlib
+seaborn
+jupyter

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steam Big Data Architecture (Vertical Flow)</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            background: #0f111a;
+            color: #e2e8f0;
+        }
+
+        h1,
+        h2 {
+            color: #66c0f4;
+            border-bottom: 2px solid #1a1e29;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+
+        .mermaid {
+            background: #1a1e29;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .step-box {
+            background: #1a1e29;
+            padding: 15px 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(102, 192, 244, 0.2);
+        }
+
+        code {
+            background: #2a3040;
+            padding: 3px 6px;
+            border-radius: 4px;
+            color: #ff79c6;
+        }
+
+        .desc {
+            text-align: center;
+            color: #94a3b8;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🎮 Steam Big Data Architecture & Workflow</h1>
+    <p class="desc">แผนภาพแสดงขั้นตอนการจัดการข้อมูลขนาดใหญ่ 43GB แบบลำดับขั้นตอนจากบนลงล่าง</p>
+
+    <div class="mermaid">
+        flowchart TD
+        classDef raw fill:#2a475e,stroke:#66c0f4,stroke-width:2px,color:#fff
+        classDef process fill:#e67e22,stroke:#d35400,stroke-width:2px,color:#fff
+        classDef storage fill:#27ae60,stroke:#2ecc71,stroke-width:2px,color:#fff
+        classDef ui fill:#2980b9,stroke:#3498db,stroke-width:2px,color:#fff
+
+        subgraph S1 ["📁 1. Data Source (Raw Layer)"]
+        CSV["all_reviews.csv (43GB)"]:::raw
+        end
+
+        subgraph S2 ["⚙️ 2. Processing Layer (Airflow)"]
+        CLEAN["clean_and_convert.py"]:::process
+        ANALYZE["analyze.py"]:::process
+        end
+
+        subgraph S3 ["💾 3. Storage Layer (Optimized)"]
+        PAR["Parquet Files (20GB)"]:::storage
+        end
+
+        subgraph S4 ["📊 4. Presentation Layer"]
+        DUCK["DuckDB Engine"]:::storage
+        DASH["Streamlit Dashboard"]:::ui
+        end
+
+        %% เส้นความสัมพันธ์
+        CSV -->|"Chunking 200,000 rows"| CLEAN
+        CLEAN -->|"Save as Snappy Parquet"| PAR
+        PAR -->|"Data Quality Check"| ANALYZE
+        PAR -.->|"Fast Query On-the-fly"| DUCK
+        DUCK -->|"Interactive Visualization"| DASH
+    </div>
+
+    <div class="step-box">
+        <h3>1. 📁 Raw Data Management</h3>
+        <p>เริ่มต้นจากไฟล์ CSV ขนาดใหญ่ 43GB ซึ่งไม่สามารถโหลดเข้า RAM ปกติได้</p>
+    </div>
+
+    <div class="step-box">
+        <h3>2. ⚙️ Orchestration with Airflow</h3>
+        <p>ใช้ Airflow ควบคุม Pipeline โดยเน้นการทำ <strong>Chunking</strong> เพื่อประมวลผลข้อมูลทีละส่วนอย่างปลอดภัย
+        </p>
+    </div>
+
+    <div class="step-box">
+        <h3>3. 💾 Storage Optimization</h3>
+        <p>แปลงข้อมูลเป็น Parquet เพื่อประหยัดพื้นที่ 50% และเพิ่มความเร็วในการอ่านข้อมูลเฉพาะคอลัมน์</p>
+    </div>
+
+    <div class="step-box">
+        <h3>4. 🚀 Real-time Analysis</h3>
+        <p>ใช้ DuckDB ดึงข้อมูลจาก Parquet มาแสดงผลบน Streamlit ในเวลาเพียง 0.43 วินาที</p>
+    </div>
+</body>
+
+</html>
