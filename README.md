@@ -2,9 +2,6 @@
 
 โปรเจกต์นี้เป็นระบบ **Data Engineering Pipeline** ครบวงจรสำหรับจัดการชุดข้อมูลรีวิวจาก Steam ขนาดใหญ่ (Original CSV **~39.57 GB**) ออกแบบมาเพื่อแก้ปัญหาข้อจำกัดด้านทรัพยากรบนเครื่อง Local (Out of Memory) โดยใช้เทคนิค Chunking และกระบวนการจัดเก็บข้อมูลที่มีประสิทธิภาพ
 
-**จัดทำโดย:** ธนภัทร สมพงษ์ (Guide)
-**สถาบัน:** มหาวิทยาลัยสยาม (Siam University)
-
 ---
 ## 📂 Dataset Source
 *   **Dataset Name:** Steam Reviews Dataset
@@ -84,6 +81,8 @@ pip install -r requirements.txt
 เข้าไปที่ http://localhost:8081 (admin/admin)
 
 เปิดใช้งาน DAG steam_pipeline_v1 เพื่อเริ่มประมวลผล
+
+docker-compose exec airflow-scheduler python /opt/airflow/src/validate_data.py
 
 ขั้นตอนที่ 3: เปิด Dashboard และ Benchmark
 Bash
